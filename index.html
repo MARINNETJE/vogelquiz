@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vogelquiz</title>
+<style>
+  :root {
+    --bg: #0f1a14;
+    --bg-card: #1a2a22;
+    --bg-card-2: #243a30;
+    --text: #e8f3ed;
+    --text-dim: #9ab1a4;
+    --accent: #5fd49a;
+    --accent-dark: #3da876;
+    --correct: #4caf50;
+    --wrong: #e74c3c;
+    --warning: #f39c12;
+    --border: #2f4a3c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+    background: linear-gradient(135deg, #0f1a14 0%, #1a2a22 100%);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  body { display: flex; align-items: stretch; justify-content: center; padding: 8px; }
+  .app { width: 100%; max-width: 560px; display: flex; flex-direction: column; min-height: 0; }
+
+  /* === SCREENS === */
+  .screen { display: none; }
+  .screen.active { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+  #menu-screen.active, #result-screen.active { justify-content: center; overflow-y: auto; }
+
+  /* === MENU === */
+  .menu-title { text-align: center; margin: 16px 0 24px; }
+  .menu-title h1 { font-size: 32px; font-weight: 700; margin-bottom: 4px; letter-spacing: -0.02em; }
+  .menu-title p { color: var(--text-dim); font-size: 14px; }
+
+  .mode-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 18px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    transition: border-color 0.15s, transform 0.1s, background 0.15s;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    font-family: inherit;
+    width: 100%;
+    text-align: left;
+    color: var(--text);
+  }
+  .mode-card:hover { border-color: var(--accent-dark); background: var(--bg-card-2); }
+  .mode-card:active { transform: scale(0.99); }
+  .mode-card.challenge-card { cursor: default; }
+  .mode-card.challenge-card:hover { background: var(--bg-card); border-color: var(--border); }
+  .mode-icon { font-size: 30px; flex-shrink: 0; width: 44px; text-align: center; line-height: 1; }
+  .mode-content { flex: 1; min-width: 0; }
+  .mode-title-text { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+  .mode-desc { font-size: 13px; color: var(--text-dim); margin-bottom: 6px; line-height: 1.35; }
+  .mode-stat { font-size: 12px; color: var(--accent); font-weight: 500; }
+
+  .difficulty-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin-top: 12px;
+  }
+  .difficulty-buttons button {
+    background: var(--bg-card-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    color: var(--text);
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 6px;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .difficulty-buttons button:hover { border-color: var(--accent-dark); background: #2d4738; }
+  .difficulty-buttons .best { font-size: 11px; color: var(--text-dim); font-weight: 500; }
+
+  /* === GAME === */
+  .header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 8px; padding: 12px 16px;
+    background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border);
+  }
+  .game-back {
+    background: var(--bg-card-2);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .game-back:hover { color: var(--text); border-color: var(--accent-dark); }
+  .stats { display: flex; gap: 14px; font-size: 13px; color: var(--text-dim); }
+  .stat strong { color: var(--text); margin-left: 4px; }
+  .elo-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; background: var(--bg-card-2); border-radius: 999px;
+    font-size: 13px; font-weight: 600; color: var(--accent);
+  }
+  .meta-line {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 11px; color: var(--text-dim); padding: 0 4px; margin-bottom: 8px;
+  }
+  .difficulty-bar {
+    height: 4px; background: var(--bg-card-2); border-radius: 2px;
+    margin-bottom: 16px; overflow: hidden;
+  }
+  .difficulty-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-dark), var(--accent));
+    transition: width 0.4s ease;
+  }
+  .card {
+    background: var(--bg-card); border-radius: 16px; overflow: hidden; border: 1px solid var(--border);
+    flex: 1; min-height: 0;
+    display: flex; flex-direction: column;
+  }
+  .photo-wrap {
+    position: relative; width: 100%;
+    background: #0a120e; overflow: hidden;
+    flex: 1; min-height: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .photo-wrap img { display: block; width: 100%; height: 100%; object-fit: contain; }
+  .photo-wrap .loader {
+    position: absolute; inset: 0; display: flex; align-items: center;
+    justify-content: center; color: var(--text-dim); font-size: 14px;
+    text-align: center; padding: 16px;
+  }
+  .photo-wrap .credit {
+    position: absolute; bottom: 6px; right: 8px; font-size: 10px;
+    color: rgba(255,255,255,0.7); background: rgba(0,0,0,0.45);
+    padding: 2px 6px; border-radius: 4px; text-decoration: none;
+  }
+  .question { padding: 14px 16px 8px; font-size: 14px; color: var(--text-dim); text-align: center; }
+  .options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px 16px 16px; }
+  .option {
+    background: var(--bg-card-2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px 12px; font-size: 16px; font-weight: 500;
+    cursor: pointer; transition: transform 0.1s, background 0.15s, border-color 0.15s;
+    text-align: center; font-family: inherit;
+  }
+  .option:hover:not(:disabled) { background: #2d4738; border-color: var(--accent-dark); }
+  .option:active:not(:disabled) { transform: scale(0.98); }
+  .option:disabled { cursor: default; opacity: 0.95; }
+  .option.correct { background: rgba(76, 175, 80, 0.18); border-color: var(--correct); color: #c8f0cd; }
+  .option.wrong { background: rgba(231, 76, 60, 0.15); border-color: var(--wrong); color: #f5c4be; }
+  .option.dim { opacity: 0.45; }
+  .feedback { text-align: center; margin-top: 12px; font-size: 14px; min-height: 20px; color: var(--text-dim); }
+  .feedback .delta-pos { color: var(--accent); font-weight: 600; }
+  .feedback .delta-neg { color: var(--wrong); font-weight: 600; }
+  .feedback .rarity { font-size: 11px; opacity: 0.7; display: block; margin-top: 4px; }
+  .next-btn {
+    display: block; width: 100%; margin-top: 12px; padding: 12px;
+    background: var(--accent); color: #0f1a14; border: none;
+    border-radius: 12px; font-size: 15px; font-weight: 600;
+    cursor: pointer; font-family: inherit;
+  }
+  .next-btn:hover { background: var(--accent-dark); }
+  .footer { margin-top: 16px; text-align: center; font-size: 11px; color: var(--text-dim); }
+  .footer a { color: var(--text-dim); }
+  .footer button {
+    background: none; border: 1px solid var(--border); color: var(--text-dim);
+    padding: 4px 10px; border-radius: 999px; font-size: 11px;
+    cursor: pointer; margin-left: 8px; font-family: inherit;
+  }
+  .footer button:hover { color: var(--text); border-color: var(--accent-dark); }
+
+  /* === RESULT === */
+  .result-card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 16px; padding: 32px 20px; text-align: center; margin-top: 24px;
+  }
+  .result-icon { font-size: 56px; margin-bottom: 8px; line-height: 1; }
+  .result-title { font-size: 22px; font-weight: 600; margin-bottom: 12px; }
+  .result-score-big { font-size: 56px; font-weight: 700; color: var(--accent); line-height: 1; margin-bottom: 4px; }
+  .result-score-small { color: var(--text-dim); font-size: 14px; margin-bottom: 20px; }
+  .result-best {
+    color: var(--text); font-size: 13px;
+    padding: 8px 14px; background: var(--bg-card-2);
+    border-radius: 999px; display: inline-block; margin-bottom: 20px;
+  }
+  .result-best.new-record { background: rgba(95, 212, 154, 0.18); color: var(--accent); font-weight: 600; }
+  .result-buttons { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+  .primary-btn, .secondary-btn {
+    width: 100%; padding: 13px; border-radius: 12px;
+    font-size: 15px; font-weight: 600; cursor: pointer;
+    font-family: inherit; border: none;
+  }
+  .primary-btn { background: var(--accent); color: #0f1a14; }
+  .primary-btn:hover { background: var(--accent-dark); }
+  .secondary-btn { background: transparent; color: var(--text-dim); border: 1px solid var(--border); }
+  .secondary-btn:hover { color: var(--text); border-color: var(--accent-dark); }
+
+  /* Footer in game-screen blijft op zijn natuurlijke hoogte */
+  #game-screen .footer { flex-shrink: 0; }
+  #game-screen .header, #game-screen .meta-line, #game-screen .difficulty-bar { flex-shrink: 0; }
+  /* Feedback + next-btn container krimpt niet */
+  #game-screen .card > div:last-child { flex-shrink: 0; }
+  .question { flex-shrink: 0; }
+  .options { flex-shrink: 0; }
+
+  @media (max-width: 420px) {
+    .options { grid-template-columns: 1fr 1fr; gap: 6px; padding: 8px 10px; }
+    .option { padding: 10px 6px; font-size: 13px; }
+    .menu-title h1 { font-size: 26px; }
+    .stats { font-size: 12px; gap: 8px; }
+  }
+  /* Lage schermhoogtes: kleinere paddings/lettergroottes zodat foto meer ruimte krijgt */
+  @media (max-height: 720px) {
+    .header { padding: 8px 14px; margin-bottom: 6px; }
+    .meta-line { font-size: 10px; margin-bottom: 4px; }
+    .difficulty-bar { margin-bottom: 8px; }
+    .question { padding: 8px 16px 4px; font-size: 12px; }
+    .options { padding: 8px 12px; gap: 6px; }
+    .option { padding: 10px 8px; font-size: 14px; }
+    .next-btn { padding: 10px; font-size: 14px; margin-top: 8px; }
+    .feedback { margin-top: 6px; font-size: 12px; min-height: 16px; }
+    .footer { margin-top: 6px; font-size: 10px; }
+  }
+  @media (max-height: 560px) {
+    .options { grid-template-columns: 1fr 1fr 1fr 1fr; padding: 6px 10px; }
+    .option { padding: 8px 4px; font-size: 12px; }
+    .header { padding: 6px 12px; margin-bottom: 4px; }
+    .header h1 { font-size: 14px; }
+    .meta-line { display: none; }
+    .difficulty-bar { margin-bottom: 4px; }
+    .question { font-size: 11px; padding: 6px 12px 2px; }
+    .footer { font-size: 9px; margin-top: 4px; }
+  }
+</style>
+</head>
+<body>
+  <div class="app">
+
+    <!-- ============== MENU SCREEN ============== -->
+    <div id="menu-screen" class="screen">
+      <div class="menu-title">
+        <h1>🐦 Vogelquiz</h1>
+        <p>Kies een modus</p>
+      </div>
+      <button class="mode-card" data-mode="endless">
+        <div class="mode-icon">♾️</div>
+        <div class="mode-content">
+          <div class="mode-title-text">Endless</div>
+          <div class="mode-desc">Speel zonder einde. Je ELO wordt opgeslagen en bepaalt de moeilijkheid.</div>
+          <div class="mode-stat" id="menu-endless-stat">ELO: 1000</div>
+        </div>
+      </button>
+      <button class="mode-card" data-mode="highscore">
+        <div class="mode-icon">🏆</div>
+        <div class="mode-content">
+          <div class="mode-title-text">Highscore</div>
+          <div class="mode-desc">Hoeveel goed achter elkaar? Eén fout = einde. Moeilijkheid stijgt met elke goede.</div>
+          <div class="mode-stat" id="menu-highscore-stat">Beste: 0</div>
+        </div>
+      </button>
+      <div class="mode-card challenge-card">
+        <div class="mode-icon">🎯</div>
+        <div class="mode-content">
+          <div class="mode-title-text">20 Vragen Challenge</div>
+          <div class="mode-desc">Vaste set van 20 vragen. Kies de moeilijkheidsgraad:</div>
+          <div class="difficulty-buttons" id="challenge-buttons">
+            <button data-diff="0.1">Beginner <span class="best" data-diff-key="0.1">—</span></button>
+            <button data-diff="0.3">Makkelijk <span class="best" data-diff-key="0.3">—</span></button>
+            <button data-diff="0.5">Gemiddeld <span class="best" data-diff-key="0.5">—</span></button>
+            <button data-diff="0.7">Moeilijk <span class="best" data-diff-key="0.7">—</span></button>
+            <button data-diff="1.0">Expert <span class="best" data-diff-key="1.0">—</span></button>
+          </div>
+        </div>
+      </div>
+      <div class="footer" style="margin-top: 24px;">
+        <button id="reset-btn" title="Reset alle voortgang">⟲ Reset alles</button>
+      </div>
+    </div>
+
+    <!-- ============== GAME SCREEN ============== -->
+    <div id="game-screen" class="screen">
+      <div class="header">
+        <button class="game-back" id="game-back-btn">← Menu</button>
+        <div class="stats" id="game-stats">
+          <span class="stat" id="stat-streak"><span class="stat-label">Streak</span><strong id="streak">0</strong></span>
+          <span class="stat" id="stat-correct"><span class="stat-label">Score</span><strong id="correct">0/0</strong></span>
+          <span class="elo-badge" id="elo-badge" title="Jouw ELO rating">⚡ <span id="elo">1000</span></span>
+        </div>
+      </div>
+      <div class="meta-line">
+        <span id="db-info">…</span>
+        <span id="rarity-target">moeilijkheid: …</span>
+      </div>
+      <div class="difficulty-bar"><div class="difficulty-fill" id="difficulty-fill" style="width: 30%"></div></div>
+      <div class="card">
+        <div class="photo-wrap">
+          <img id="bird-photo" alt="" style="display:none">
+          <div class="loader" id="photo-loader">Foto laden…</div>
+          <a id="photo-credit" class="credit" target="_blank" rel="noopener" style="display:none">Wikipedia</a>
+        </div>
+        <div class="question">Welke vogel zie je?</div>
+        <div class="options" id="options"></div>
+        <div style="padding: 0 16px 16px;">
+          <div class="feedback" id="feedback"></div>
+          <button class="next-btn" id="next-btn" style="display:none">Volgende vogel →</button>
+        </div>
+      </div>
+      <div class="footer">
+        Foto's via <a href="https://nl.wikipedia.org" target="_blank" rel="noopener">Wikipedia</a>
+        · Druk 1–4 om te antwoorden · ESC voor menu
+      </div>
+    </div>
+
+    <!-- ============== RESULT SCREEN ============== -->
+    <div id="result-screen" class="screen">
+      <div class="result-card">
+        <div class="result-icon" id="result-icon">🎉</div>
+        <div class="result-title" id="result-title">Klaar!</div>
+        <div class="result-score-big" id="result-score">0</div>
+        <div class="result-score-small" id="result-score-detail"></div>
+        <div class="result-best" id="result-best"></div>
+        <div class="result-buttons">
+          <button class="primary-btn" id="play-again-btn">Speel opnieuw</button>
+          <button class="secondary-btn" id="back-to-menu-btn">Terug naar menu</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+<script>
+// =================================================================
+// VOGELDATABASE
+// rarity: 1 = zeer talrijk, 2 = talrijk, 3 = vrij algemeen, 4 = schaars, 5 = zeldzaam
+// =================================================================
+const RARITY_LABEL = { 1: 'zeer talrijk', 2: 'talrijk', 3: 'vrij algemeen', 4: 'schaars', 5: 'zeldzaam' };
+
+const BIRDS = [
+  // Eenden, ganzen, zwanen
+  { id:'knobbelzwaan', name:'Knobbelzwaan', wiki_nl:'Knobbelzwaan', wiki_en:'Mute_swan', rarity:1, group:'ducks' },
+  { id:'kleine_zwaan', name:'Kleine zwaan', wiki_nl:'Kleine_zwaan', wiki_en:'Tundra_swan', rarity:3, group:'ducks' },
+  { id:'wilde_zwaan', name:'Wilde zwaan', wiki_nl:'Wilde_zwaan', wiki_en:'Whooper_swan', rarity:3, group:'ducks' },
+  { id:'grauwe_gans', name:'Grauwe gans', wiki_nl:'Grauwe_gans', wiki_en:'Greylag_goose', rarity:1, group:'ducks' },
+  { id:'kolgans', name:'Kolgans', wiki_nl:'Kolgans', wiki_en:'Greater_white-fronted_goose', rarity:1, group:'ducks' },
+  { id:'dwerggans', name:'Dwerggans', wiki_nl:'Dwerggans', wiki_en:'Lesser_white-fronted_goose', rarity:5, group:'ducks' },
+  { id:'toendrarietgans', name:'Toendrarietgans', wiki_nl:'Toendrarietgans', wiki_en:'Tundra_bean_goose', rarity:2, group:'ducks' },
+  { id:'taigarietgans', name:'Taigarietgans', wiki_nl:'Taigarietgans', wiki_en:'Taiga_bean_goose', rarity:4, group:'ducks' },
+  { id:'brandgans', name:'Brandgans', wiki_nl:'Brandgans', wiki_en:'Barnacle_goose', rarity:1, group:'ducks' },
+  { id:'rotgans', name:'Rotgans', wiki_nl:'Rotgans', wiki_en:'Brant_goose', rarity:2, group:'ducks' },
+  { id:'canadese_gans', name:'Grote Canadese gans', wiki_nl:'Grote_Canadese_gans', wiki_en:'Canada_goose', rarity:1, group:'ducks' },
+  { id:'nijlgans', name:'Nijlgans', wiki_nl:'Nijlgans', wiki_en:'Egyptian_goose', rarity:1, group:'ducks' },
+  { id:'bergeend', name:'Bergeend', wiki_nl:'Bergeend', wiki_en:'Common_shelduck', rarity:1, group:'ducks' },
+  { id:'casarca', name:'Casarca', wiki_nl:'Casarca', wiki_en:'Ruddy_shelduck', rarity:4, group:'ducks' },
+  { id:'mandarijneend', name:'Mandarijneend', wiki_nl:'Mandarijneend', wiki_en:'Mandarin_duck', rarity:3, group:'ducks' },
+  { id:'krooneend', name:'Krooneend', wiki_nl:'Krooneend', wiki_en:'Red-crested_pochard', rarity:3, group:'ducks' },
+  { id:'krakeend', name:'Krakeend', wiki_nl:'Krakeend', wiki_en:'Gadwall', rarity:1, group:'ducks' },
+  { id:'smient', name:'Smient', wiki_nl:'Smient', wiki_en:'Eurasian_wigeon', rarity:1, group:'ducks' },
+  { id:'wilde_eend', name:'Wilde eend', wiki_nl:'Wilde_eend', wiki_en:'Mallard', rarity:1, group:'ducks' },
+  { id:'pijlstaart', name:'Pijlstaart', wiki_nl:'Pijlstaart_(eend)', wiki_en:'Northern_pintail', rarity:2, group:'ducks' },
+  { id:'zomertaling', name:'Zomertaling', wiki_nl:'Zomertaling', wiki_en:'Garganey', rarity:3, group:'ducks' },
+  { id:'wintertaling', name:'Wintertaling', wiki_nl:'Wintertaling', wiki_en:'Eurasian_teal', rarity:1, group:'ducks' },
+  { id:'slobeend', name:'Slobeend', wiki_nl:'Slobeend', wiki_en:'Northern_shoveler', rarity:1, group:'ducks' },
+  { id:'tafeleend', name:'Tafeleend', wiki_nl:'Tafeleend', wiki_en:'Common_pochard', rarity:1, group:'ducks' },
+  { id:'kuifeend', name:'Kuifeend', wiki_nl:'Kuifeend', wiki_en:'Tufted_duck', rarity:1, group:'ducks' },
+  { id:'topper', name:'Toppereend', wiki_nl:'Toppereend', wiki_en:'Greater_scaup', rarity:3, group:'ducks' },
+  { id:'eider', name:'Eider', wiki_nl:'Eidereend', wiki_en:'Common_eider', rarity:2, group:'ducks' },
+  { id:'zwarte_zee_eend', name:'Zwarte zee-eend', wiki_nl:'Zwarte_zee-eend', wiki_en:'Common_scoter', rarity:2, group:'ducks' },
+  { id:'grote_zee_eend', name:'Grote zee-eend', wiki_nl:'Grote_zee-eend', wiki_en:'Velvet_scoter', rarity:4, group:'ducks' },
+  { id:'brilduiker', name:'Brilduiker', wiki_nl:'Brilduiker', wiki_en:'Common_goldeneye', rarity:2, group:'ducks' },
+  { id:'ijseend', name:'IJseend', wiki_nl:'IJseend', wiki_en:'Long-tailed_duck', rarity:4, group:'ducks' },
+  { id:'nonnetje', name:'Nonnetje', wiki_nl:'Nonnetje', wiki_en:'Smew', rarity:2, group:'ducks' },
+  { id:'middelste_zaagbek', name:'Middelste zaagbek', wiki_nl:'Middelste_zaagbek', wiki_en:'Red-breasted_merganser', rarity:3, group:'ducks' },
+  { id:'grote_zaagbek', name:'Grote zaagbek', wiki_nl:'Grote_zaagbek', wiki_en:'Common_merganser', rarity:2, group:'ducks' },
+
+  // Hoenders
+  { id:'patrijs', name:'Patrijs', wiki_nl:'Patrijs_(vogel)', wiki_en:'Grey_partridge', rarity:3, group:'gamebirds' },
+  { id:'kwartel', name:'Kwartel', wiki_nl:'Kwartel', wiki_en:'Common_quail', rarity:4, group:'gamebirds' },
+  { id:'fazant', name:'Fazant', wiki_nl:'Fazant_(vogel)', wiki_en:'Common_pheasant', rarity:1, group:'gamebirds' },
+
+  // Duikers
+  { id:'roodkeelduiker', name:'Roodkeelduiker', wiki_nl:'Roodkeelduiker', wiki_en:'Red-throated_loon', rarity:3, group:'divers' },
+  { id:'parelduiker', name:'Parelduiker', wiki_nl:'Parelduiker', wiki_en:'Black-throated_loon', rarity:4, group:'divers' },
+  { id:'ijsduiker', name:'IJsduiker', wiki_nl:'IJsduiker', wiki_en:'Common_loon', rarity:5, group:'divers' },
+
+  // Futen
+  { id:'dodaars', name:'Dodaars', wiki_nl:'Dodaars', wiki_en:'Little_grebe', rarity:2, group:'grebes' },
+  { id:'fuut', name:'Fuut', wiki_nl:'Fuut_(vogel)', wiki_en:'Great_crested_grebe', rarity:1, group:'grebes' },
+  { id:'roodhalsfuut', name:'Roodhalsfuut', wiki_nl:'Roodhalsfuut', wiki_en:'Red-necked_grebe', rarity:4, group:'grebes' },
+  { id:'kuifduiker', name:'Kuifduiker', wiki_nl:'Kuifduiker', wiki_en:'Horned_grebe', rarity:4, group:'grebes' },
+  { id:'geoorde_fuut', name:'Geoorde fuut', wiki_nl:'Geoorde_fuut', wiki_en:'Black-necked_grebe', rarity:3, group:'grebes' },
+
+  // Stormvogels & gent
+  { id:'noordse_stormvogel', name:'Noordse stormvogel', wiki_nl:'Noordse_stormvogel', wiki_en:'Northern_fulmar', rarity:4, group:'tubenoses' },
+  { id:'jan_van_gent', name:'Jan-van-gent', wiki_nl:'Jan-van-gent', wiki_en:'Northern_gannet', rarity:3, group:'gannets' },
+
+  // Aalscholvers
+  { id:'aalscholver', name:'Aalscholver', wiki_nl:'Aalscholver', wiki_en:'Great_cormorant', rarity:1, group:'cormorants' },
+
+  // Reigers
+  { id:'roerdomp', name:'Roerdomp', wiki_nl:'Roerdomp', wiki_en:'Eurasian_bittern', rarity:4, group:'herons' },
+  { id:'woudaap', name:'Woudaap', wiki_nl:'Woudaap', wiki_en:'Little_bittern', rarity:4, group:'herons' },
+  { id:'kwak', name:'Kwak', wiki_nl:'Kwak_(vogel)', wiki_en:'Black-crowned_night_heron', rarity:4, group:'herons' },
+  { id:'koereiger', name:'Koereiger', wiki_nl:'Koereiger', wiki_en:'Western_cattle_egret', rarity:3, group:'herons' },
+  { id:'kleine_zilverreiger', name:'Kleine zilverreiger', wiki_nl:'Kleine_zilverreiger', wiki_en:'Little_egret', rarity:3, group:'herons' },
+  { id:'grote_zilverreiger', name:'Grote zilverreiger', wiki_nl:'Grote_zilverreiger', wiki_en:'Great_egret', rarity:2, group:'herons' },
+  { id:'blauwe_reiger', name:'Blauwe reiger', wiki_nl:'Blauwe_reiger', wiki_en:'Grey_heron', rarity:1, group:'herons' },
+  { id:'purperreiger', name:'Purperreiger', wiki_nl:'Purperreiger', wiki_en:'Purple_heron', rarity:3, group:'herons' },
+
+  // Ooievaars
+  { id:'ooievaar', name:'Ooievaar', wiki_nl:'Ooievaar', wiki_en:'White_stork', rarity:2, group:'storks' },
+  { id:'zwarte_ooievaar', name:'Zwarte ooievaar', wiki_nl:'Zwarte_ooievaar', wiki_en:'Black_stork', rarity:5, group:'storks' },
+
+  // Ibissen / lepelaar
+  { id:'lepelaar', name:'Lepelaar', wiki_nl:'Lepelaar', wiki_en:'Eurasian_spoonbill', rarity:2, group:'ibises' },
+  { id:'zwarte_ibis', name:'Zwarte ibis', wiki_nl:'Zwarte_ibis', wiki_en:'Glossy_ibis', rarity:5, group:'ibises' },
+
+  // Visarend
+  { id:'visarend', name:'Visarend', wiki_nl:'Visarend', wiki_en:'Western_osprey', rarity:4, group:'raptors' },
+
+  // Roofvogels
+  { id:'wespendief', name:'Wespendief', wiki_nl:'Wespendief', wiki_en:'European_honey_buzzard', rarity:3, group:'raptors' },
+  { id:'zwarte_wouw', name:'Zwarte wouw', wiki_nl:'Zwarte_wouw', wiki_en:'Black_kite', rarity:4, group:'raptors' },
+  { id:'rode_wouw', name:'Rode wouw', wiki_nl:'Rode_wouw', wiki_en:'Red_kite', rarity:4, group:'raptors' },
+  { id:'zeearend', name:'Zeearend', wiki_nl:'Zeearend', wiki_en:'White-tailed_eagle', rarity:4, group:'raptors' },
+  { id:'bruine_kiekendief', name:'Bruine kiekendief', wiki_nl:'Bruine_kiekendief', wiki_en:'Western_marsh_harrier', rarity:2, group:'raptors' },
+  { id:'blauwe_kiekendief', name:'Blauwe kiekendief', wiki_nl:'Blauwe_kiekendief', wiki_en:'Hen_harrier', rarity:3, group:'raptors' },
+  { id:'grauwe_kiekendief', name:'Grauwe kiekendief', wiki_nl:'Grauwe_kiekendief', wiki_en:"Montagu's_harrier", rarity:5, group:'raptors' },
+  { id:'havik', name:'Havik', wiki_nl:'Havik_(vogel)', wiki_en:'Northern_goshawk', rarity:2, group:'raptors' },
+  { id:'sperwer', name:'Sperwer', wiki_nl:'Sperwer', wiki_en:'Eurasian_sparrowhawk', rarity:1, group:'raptors' },
+  { id:'buizerd', name:'Buizerd', wiki_nl:'Buizerd', wiki_en:'Common_buzzard', rarity:1, group:'raptors' },
+  { id:'ruigpootbuizerd', name:'Ruigpootbuizerd', wiki_nl:'Ruigpootbuizerd', wiki_en:'Rough-legged_buzzard', rarity:4, group:'raptors' },
+
+  // Valken
+  { id:'torenvalk', name:'Torenvalk', wiki_nl:'Torenvalk', wiki_en:'Common_kestrel', rarity:1, group:'falcons' },
+  { id:'smelleken', name:'Smelleken', wiki_nl:'Smelleken', wiki_en:'Merlin_(bird)', rarity:3, group:'falcons' },
+  { id:'boomvalk', name:'Boomvalk', wiki_nl:'Boomvalk', wiki_en:'Eurasian_hobby', rarity:3, group:'falcons' },
+  { id:'slechtvalk', name:'Slechtvalk', wiki_nl:'Slechtvalk', wiki_en:'Peregrine_falcon', rarity:2, group:'falcons' },
+  { id:'roodpootvalk', name:'Roodpootvalk', wiki_nl:'Roodpootvalk', wiki_en:'Red-footed_falcon', rarity:5, group:'falcons' },
+
+  // Rallen
+  { id:'waterral', name:'Waterral', wiki_nl:'Waterral', wiki_en:'Water_rail', rarity:3, group:'rails' },
+  { id:'porseleinhoen', name:'Porseleinhoen', wiki_nl:'Porseleinhoen', wiki_en:'Spotted_crake', rarity:4, group:'rails' },
+  { id:'kwartelkoning', name:'Kwartelkoning', wiki_nl:'Kwartelkoning', wiki_en:'Corn_crake', rarity:4, group:'rails' },
+  { id:'waterhoen', name:'Waterhoen', wiki_nl:'Waterhoen', wiki_en:'Common_moorhen', rarity:1, group:'rails' },
+  { id:'meerkoet', name:'Meerkoet', wiki_nl:'Meerkoet', wiki_en:'Eurasian_coot', rarity:1, group:'rails' },
+
+  // Kraanvogel
+  { id:'kraanvogel', name:'Kraanvogel', wiki_nl:'Kraanvogel', wiki_en:'Common_crane', rarity:3, group:'cranes' },
+
+  // Steltlopers
+  { id:'scholekster', name:'Scholekster', wiki_nl:'Scholekster', wiki_en:'Eurasian_oystercatcher', rarity:1, group:'waders' },
+  { id:'kluut', name:'Kluut', wiki_nl:'Kluut', wiki_en:'Pied_avocet', rarity:2, group:'waders' },
+  { id:'steltkluut', name:'Steltkluut', wiki_nl:'Steltkluut', wiki_en:'Black-winged_stilt', rarity:5, group:'waders' },
+  { id:'bontbekplevier', name:'Bontbekplevier', wiki_nl:'Bontbekplevier', wiki_en:'Common_ringed_plover', rarity:2, group:'waders' },
+  { id:'kleine_plevier', name:'Kleine plevier', wiki_nl:'Kleine_plevier', wiki_en:'Little_ringed_plover', rarity:3, group:'waders' },
+  { id:'strandplevier', name:'Strandplevier', wiki_nl:'Strandplevier', wiki_en:'Kentish_plover', rarity:4, group:'waders' },
+  { id:'goudplevier', name:'Goudplevier', wiki_nl:'Goudplevier', wiki_en:'European_golden_plover', rarity:2, group:'waders' },
+  { id:'zilverplevier', name:'Zilverplevier', wiki_nl:'Zilverplevier', wiki_en:'Grey_plover', rarity:2, group:'waders' },
+  { id:'kievit', name:'Kievit', wiki_nl:'Kievit_(vogel)', wiki_en:'Northern_lapwing', rarity:1, group:'waders' },
+  { id:'bonte_strandloper', name:'Bonte strandloper', wiki_nl:'Bonte_strandloper', wiki_en:'Dunlin', rarity:1, group:'waders' },
+  { id:'krombekstrandloper', name:'Krombekstrandloper', wiki_nl:'Krombekstrandloper', wiki_en:'Curlew_sandpiper', rarity:3, group:'waders' },
+  { id:'kanoet', name:'Kanoet', wiki_nl:'Kanoet', wiki_en:'Red_knot', rarity:2, group:'waders' },
+  { id:'drieteenstrandloper', name:'Drieteenstrandloper', wiki_nl:'Drieteenstrandloper', wiki_en:'Sanderling', rarity:2, group:'waders' },
+  { id:'paarse_strandloper', name:'Paarse strandloper', wiki_nl:'Paarse_strandloper', wiki_en:'Purple_sandpiper', rarity:4, group:'waders' },
+  { id:'kleine_strandloper', name:'Kleine strandloper', wiki_nl:'Kleine_strandloper', wiki_en:'Little_stint', rarity:3, group:'waders' },
+  { id:'temmincks_strandloper', name:'Temmincks strandloper', wiki_nl:'Temmincks_strandloper', wiki_en:"Temminck's_stint", rarity:4, group:'waders' },
+  { id:'kemphaan', name:'Kemphaan', wiki_nl:'Kemphaan', wiki_en:'Ruff_(bird)', rarity:2, group:'waders' },
+  { id:'watersnip', name:'Watersnip', wiki_nl:'Watersnip', wiki_en:'Common_snipe', rarity:2, group:'waders' },
+  { id:'bokje', name:'Bokje', wiki_nl:'Bokje_(vogel)', wiki_en:'Jack_snipe', rarity:4, group:'waders' },
+  { id:'houtsnip', name:'Houtsnip', wiki_nl:'Houtsnip', wiki_en:'Eurasian_woodcock', rarity:3, group:'waders' },
+  { id:'rosse_grutto', name:'Rosse grutto', wiki_nl:'Rosse_grutto', wiki_en:'Bar-tailed_godwit', rarity:2, group:'waders' },
+  { id:'grutto', name:'Grutto', wiki_nl:'Grutto', wiki_en:'Black-tailed_godwit', rarity:2, group:'waders' },
+  { id:'regenwulp', name:'Regenwulp', wiki_nl:'Regenwulp', wiki_en:'Whimbrel', rarity:3, group:'waders' },
+  { id:'wulp', name:'Wulp', wiki_nl:'Wulp', wiki_en:'Eurasian_curlew', rarity:1, group:'waders' },
+  { id:'zwarte_ruiter', name:'Zwarte ruiter', wiki_nl:'Zwarte_ruiter', wiki_en:'Spotted_redshank', rarity:3, group:'waders' },
+  { id:'tureluur', name:'Tureluur', wiki_nl:'Tureluur', wiki_en:'Common_redshank', rarity:1, group:'waders' },
+  { id:'groenpootruiter', name:'Groenpootruiter', wiki_nl:'Groenpootruiter', wiki_en:'Common_greenshank', rarity:2, group:'waders' },
+  { id:'witgat', name:'Witgat', wiki_nl:'Witgat', wiki_en:'Green_sandpiper', rarity:2, group:'waders' },
+  { id:'bosruiter', name:'Bosruiter', wiki_nl:'Bosruiter', wiki_en:'Wood_sandpiper', rarity:3, group:'waders' },
+  { id:'oeverloper', name:'Oeverloper', wiki_nl:'Oeverloper', wiki_en:'Common_sandpiper', rarity:2, group:'waders' },
+  { id:'steenloper', name:'Steenloper', wiki_nl:'Steenloper', wiki_en:'Ruddy_turnstone', rarity:2, group:'waders' },
+
+  // Meeuwen
+  { id:'dwergmeeuw', name:'Dwergmeeuw', wiki_nl:'Dwergmeeuw', wiki_en:'Little_gull', rarity:3, group:'gulls' },
+  { id:'kokmeeuw', name:'Kokmeeuw', wiki_nl:'Kokmeeuw', wiki_en:'Black-headed_gull', rarity:1, group:'gulls' },
+  { id:'zwartkopmeeuw', name:'Zwartkopmeeuw', wiki_nl:'Zwartkopmeeuw', wiki_en:'Mediterranean_gull', rarity:2, group:'gulls' },
+  { id:'stormmeeuw', name:'Stormmeeuw', wiki_nl:'Stormmeeuw', wiki_en:'Common_gull', rarity:1, group:'gulls' },
+  { id:'kleine_mantelmeeuw', name:'Kleine mantelmeeuw', wiki_nl:'Kleine_mantelmeeuw', wiki_en:'Lesser_black-backed_gull', rarity:1, group:'gulls' },
+  { id:'zilvermeeuw', name:'Zilvermeeuw', wiki_nl:'Zilvermeeuw', wiki_en:'European_herring_gull', rarity:1, group:'gulls' },
+  { id:'pontische_meeuw', name:'Pontische meeuw', wiki_nl:'Pontische_meeuw', wiki_en:'Caspian_gull', rarity:4, group:'gulls' },
+  { id:'geelpootmeeuw', name:'Geelpootmeeuw', wiki_nl:'Geelpootmeeuw', wiki_en:'Yellow-legged_gull', rarity:4, group:'gulls' },
+  { id:'grote_mantelmeeuw', name:'Grote mantelmeeuw', wiki_nl:'Grote_mantelmeeuw', wiki_en:'Great_black-backed_gull', rarity:2, group:'gulls' },
+  { id:'drieteenmeeuw', name:'Drieteenmeeuw', wiki_nl:'Drieteenmeeuw', wiki_en:'Black-legged_kittiwake', rarity:3, group:'gulls' },
+
+  // Sterns
+  { id:'grote_stern', name:'Grote stern', wiki_nl:'Grote_stern', wiki_en:'Sandwich_tern', rarity:2, group:'terns' },
+  { id:'visdief', name:'Visdief', wiki_nl:'Visdief', wiki_en:'Common_tern', rarity:1, group:'terns' },
+  { id:'noordse_stern', name:'Noordse stern', wiki_nl:'Noordse_stern', wiki_en:'Arctic_tern', rarity:3, group:'terns' },
+  { id:'dwergstern', name:'Dwergstern', wiki_nl:'Dwergstern', wiki_en:'Little_tern', rarity:4, group:'terns' },
+  { id:'zwarte_stern', name:'Zwarte stern', wiki_nl:'Zwarte_stern', wiki_en:'Black_tern', rarity:3, group:'terns' },
+  { id:'witwangstern', name:'Witwangstern', wiki_nl:'Witwangstern', wiki_en:'Whiskered_tern', rarity:5, group:'terns' },
+
+  // Alken
+  { id:'alk', name:'Alk', wiki_nl:'Alk_(vogel)', wiki_en:'Razorbill', rarity:4, group:'auks' },
+  { id:'zeekoet', name:'Zeekoet', wiki_nl:'Zeekoet', wiki_en:'Common_murre', rarity:4, group:'auks' },
+
+  // Duiven
+  { id:'stadsduif', name:'Stadsduif', wiki_nl:'Stadsduif', wiki_en:'Feral_pigeon', rarity:1, group:'pigeons' },
+  { id:'holenduif', name:'Holenduif', wiki_nl:'Holenduif', wiki_en:'Stock_dove', rarity:1, group:'pigeons' },
+  { id:'houtduif', name:'Houtduif', wiki_nl:'Houtduif', wiki_en:'Common_wood_pigeon', rarity:1, group:'pigeons' },
+  { id:'turkse_tortel', name:'Turkse tortel', wiki_nl:'Turkse_tortel', wiki_en:'Eurasian_collared_dove', rarity:1, group:'pigeons' },
+  { id:'zomertortel', name:'Zomertortel', wiki_nl:'Zomertortel', wiki_en:'European_turtle_dove', rarity:4, group:'pigeons' },
+
+  // Koekoek
+  { id:'koekoek', name:'Koekoek', wiki_nl:'Koekoek_(vogel)', wiki_en:'Common_cuckoo', rarity:2, group:'cuckoos' },
+
+  // Uilen
+  { id:'kerkuil', name:'Kerkuil', wiki_nl:'Kerkuil', wiki_en:'Western_barn_owl', rarity:3, group:'owls' },
+  { id:'oehoe', name:'Oehoe', wiki_nl:'Oehoe', wiki_en:'Eurasian_eagle-owl', rarity:4, group:'owls' },
+  { id:'steenuil', name:'Steenuil', wiki_nl:'Steenuil', wiki_en:'Little_owl', rarity:3, group:'owls' },
+  { id:'bosuil', name:'Bosuil', wiki_nl:'Bosuil', wiki_en:'Tawny_owl', rarity:2, group:'owls' },
+  { id:'ransuil', name:'Ransuil', wiki_nl:'Ransuil', wiki_en:'Long-eared_owl', rarity:2, group:'owls' },
+  { id:'velduil', name:'Velduil', wiki_nl:'Velduil', wiki_en:'Short-eared_owl', rarity:4, group:'owls' },
+
+  // Nachtzwaluw, gierzwaluw
+  { id:'nachtzwaluw', name:'Nachtzwaluw', wiki_nl:'Nachtzwaluw', wiki_en:'European_nightjar', rarity:4, group:'nightjars' },
+  { id:'gierzwaluw', name:'Gierzwaluw', wiki_nl:'Gierzwaluw', wiki_en:'Common_swift', rarity:1, group:'swifts' },
+
+  // IJsvogel & co
+  { id:'ijsvogel', name:'IJsvogel', wiki_nl:'IJsvogel', wiki_en:'Common_kingfisher', rarity:3, group:'kingfishers' },
+  { id:'bijeneter', name:'Bijeneter', wiki_nl:'Bijeneter_(vogel)', wiki_en:'European_bee-eater', rarity:5, group:'bee_eaters' },
+  { id:'hop', name:'Hop', wiki_nl:'Hop_(vogel)', wiki_en:'Eurasian_hoopoe', rarity:5, group:'hoopoes' },
+
+  // Spechten
+  { id:'draaihals', name:'Draaihals', wiki_nl:'Draaihals', wiki_en:'Eurasian_wryneck', rarity:4, group:'woodpeckers' },
+  { id:'groene_specht', name:'Groene specht', wiki_nl:'Groene_specht', wiki_en:'European_green_woodpecker', rarity:2, group:'woodpeckers' },
+  { id:'zwarte_specht', name:'Zwarte specht', wiki_nl:'Zwarte_specht', wiki_en:'Black_woodpecker', rarity:3, group:'woodpeckers' },
+  { id:'grote_bonte_specht', name:'Grote bonte specht', wiki_nl:'Grote_bonte_specht', wiki_en:'Great_spotted_woodpecker', rarity:1, group:'woodpeckers' },
+  { id:'middelste_bonte_specht', name:'Middelste bonte specht', wiki_nl:'Middelste_bonte_specht', wiki_en:'Middle_spotted_woodpecker', rarity:4, group:'woodpeckers' },
+  { id:'kleine_bonte_specht', name:'Kleine bonte specht', wiki_nl:'Kleine_bonte_specht', wiki_en:'Lesser_spotted_woodpecker', rarity:3, group:'woodpeckers' },
+
+  // Halsbandparkiet
+  { id:'halsbandparkiet', name:'Halsbandparkiet', wiki_nl:'Halsbandparkiet', wiki_en:'Rose-ringed_parakeet', rarity:2, group:'parakeets' },
+
+  // Leeuweriken
+  { id:'boomleeuwerik', name:'Boomleeuwerik', wiki_nl:'Boomleeuwerik', wiki_en:'Wood_lark', rarity:3, group:'larks' },
+  { id:'veldleeuwerik', name:'Veldleeuwerik', wiki_nl:'Veldleeuwerik', wiki_en:'Eurasian_skylark', rarity:2, group:'larks' },
+  { id:'strandleeuwerik', name:'Strandleeuwerik', wiki_nl:'Strandleeuwerik', wiki_en:'Horned_lark', rarity:4, group:'larks' },
+
+  // Zwaluwen
+  { id:'oeverzwaluw', name:'Oeverzwaluw', wiki_nl:'Oeverzwaluw', wiki_en:'Sand_martin', rarity:2, group:'swallows' },
+  { id:'boerenzwaluw', name:'Boerenzwaluw', wiki_nl:'Boerenzwaluw', wiki_en:'Barn_swallow', rarity:1, group:'swallows' },
+  { id:'huiszwaluw', name:'Huiszwaluw', wiki_nl:'Huiszwaluw', wiki_en:'Common_house_martin', rarity:2, group:'swallows' },
+
+  // Piepers en kwikstaarten
+  { id:'graspieper', name:'Graspieper', wiki_nl:'Graspieper', wiki_en:'Meadow_pipit', rarity:1, group:'pipits_wagtails' },
+  { id:'boompieper', name:'Boompieper', wiki_nl:'Boompieper', wiki_en:'Tree_pipit', rarity:2, group:'pipits_wagtails' },
+  { id:'oeverpieper', name:'Oeverpieper', wiki_nl:'Oeverpieper', wiki_en:'Eurasian_rock_pipit', rarity:3, group:'pipits_wagtails' },
+  { id:'waterpieper', name:'Waterpieper', wiki_nl:'Waterpieper', wiki_en:'Water_pipit', rarity:3, group:'pipits_wagtails' },
+  { id:'gele_kwikstaart', name:'Gele kwikstaart', wiki_nl:'Gele_kwikstaart', wiki_en:'Western_yellow_wagtail', rarity:2, group:'pipits_wagtails' },
+  { id:'grote_gele_kwikstaart', name:'Grote gele kwikstaart', wiki_nl:'Grote_gele_kwikstaart', wiki_en:'Grey_wagtail', rarity:3, group:'pipits_wagtails' },
+  { id:'witte_kwikstaart', name:'Witte kwikstaart', wiki_nl:'Witte_kwikstaart', wiki_en:'White_wagtail', rarity:1, group:'pipits_wagtails' },
+
+  // Pestvogel
+  { id:'pestvogel', name:'Pestvogel', wiki_nl:'Pestvogel', wiki_en:'Bohemian_waxwing', rarity:5, group:'waxwings' },
+
+  // Winterkoning, heggenmus, waterspreeuw
+  { id:'winterkoning', name:'Winterkoning', wiki_nl:'Winterkoning', wiki_en:'Eurasian_wren', rarity:1, group:'wrens' },
+  { id:'heggenmus', name:'Heggenmus', wiki_nl:'Heggenmus', wiki_en:'Dunnock', rarity:1, group:'accentors' },
+  { id:'waterspreeuw', name:'Waterspreeuw', wiki_nl:'Waterspreeuw', wiki_en:'White-throated_dipper', rarity:5, group:'dippers' },
+
+  // Lijsters
+  { id:'merel', name:'Merel', wiki_nl:'Merel', wiki_en:'Common_blackbird', rarity:1, group:'thrushes' },
+  { id:'kramsvogel', name:'Kramsvogel', wiki_nl:'Kramsvogel', wiki_en:'Fieldfare', rarity:1, group:'thrushes' },
+  { id:'koperwiek', name:'Koperwiek', wiki_nl:'Koperwiek', wiki_en:'Redwing', rarity:1, group:'thrushes' },
+  { id:'zanglijster', name:'Zanglijster', wiki_nl:'Zanglijster', wiki_en:'Song_thrush', rarity:1, group:'thrushes' },
+  { id:'grote_lijster', name:'Grote lijster', wiki_nl:'Grote_lijster', wiki_en:'Mistle_thrush', rarity:2, group:'thrushes' },
+  { id:'beflijster', name:'Beflijster', wiki_nl:'Beflijster', wiki_en:'Ring_ouzel', rarity:4, group:'thrushes' },
+
+  // Vliegenvangers en chats
+  { id:'nachtegaal', name:'Nachtegaal', wiki_nl:'Nachtegaal', wiki_en:'Common_nightingale', rarity:3, group:'chats' },
+  { id:'blauwborst', name:'Blauwborst', wiki_nl:'Blauwborst', wiki_en:'Bluethroat', rarity:2, group:'chats' },
+  { id:'roodborst', name:'Roodborst', wiki_nl:'Roodborst', wiki_en:'European_robin', rarity:1, group:'chats' },
+  { id:'gekraagde_roodstaart', name:'Gekraagde roodstaart', wiki_nl:'Gekraagde_roodstaart', wiki_en:'Common_redstart', rarity:2, group:'chats' },
+  { id:'zwarte_roodstaart', name:'Zwarte roodstaart', wiki_nl:'Zwarte_roodstaart', wiki_en:'Black_redstart', rarity:2, group:'chats' },
+  { id:'paapje', name:'Paapje', wiki_nl:'Paapje', wiki_en:'Whinchat', rarity:4, group:'chats' },
+  { id:'roodborsttapuit', name:'Roodborsttapuit', wiki_nl:'Roodborsttapuit', wiki_en:'European_stonechat', rarity:2, group:'chats' },
+  { id:'tapuit', name:'Tapuit', wiki_nl:'Tapuit_(vogel)', wiki_en:'Northern_wheatear', rarity:3, group:'chats' },
+  { id:'grauwe_vliegenvanger', name:'Grauwe vliegenvanger', wiki_nl:'Grauwe_vliegenvanger', wiki_en:'Spotted_flycatcher', rarity:2, group:'chats' },
+  { id:'bonte_vliegenvanger', name:'Bonte vliegenvanger', wiki_nl:'Bonte_vliegenvanger', wiki_en:'European_pied_flycatcher', rarity:2, group:'chats' },
+
+  // Rietzangers
+  { id:'graszanger', name:'Graszanger', wiki_nl:'Graszanger', wiki_en:'Zitting_cisticola', rarity:4, group:'reed_warblers' },
+  { id:'sprinkhaanzanger', name:'Sprinkhaanzanger', wiki_nl:'Sprinkhaanzanger', wiki_en:'Common_grasshopper_warbler', rarity:3, group:'reed_warblers' },
+  { id:'snor', name:'Snor', wiki_nl:'Snor_(vogel)', wiki_en:"Savi's_warbler", rarity:4, group:'reed_warblers' },
+  { id:'rietzanger', name:'Rietzanger', wiki_nl:'Rietzanger', wiki_en:'Sedge_warbler', rarity:2, group:'reed_warblers' },
+  { id:'bosrietzanger', name:'Bosrietzanger', wiki_nl:'Bosrietzanger', wiki_en:'Marsh_warbler', rarity:2, group:'reed_warblers' },
+  { id:'kleine_karekiet', name:'Kleine karekiet', wiki_nl:'Kleine_karekiet', wiki_en:'Common_reed_warbler', rarity:1, group:'reed_warblers' },
+  { id:'grote_karekiet', name:'Grote karekiet', wiki_nl:'Grote_karekiet', wiki_en:'Great_reed_warbler', rarity:4, group:'reed_warblers' },
+  { id:'spotvogel', name:'Spotvogel', wiki_nl:'Spotvogel', wiki_en:'Icterine_warbler', rarity:3, group:'reed_warblers' },
+
+  // Sylviidae
+  { id:'braamsluiper', name:'Braamsluiper', wiki_nl:'Braamsluiper', wiki_en:'Lesser_whitethroat', rarity:3, group:'typical_warblers' },
+  { id:'grasmus', name:'Grasmus', wiki_nl:'Grasmus', wiki_en:'Common_whitethroat', rarity:2, group:'typical_warblers' },
+  { id:'tuinfluiter', name:'Tuinfluiter', wiki_nl:'Tuinfluiter', wiki_en:'Garden_warbler', rarity:2, group:'typical_warblers' },
+  { id:'zwartkop', name:'Zwartkop', wiki_nl:'Zwartkop_(vogel)', wiki_en:'Eurasian_blackcap', rarity:1, group:'typical_warblers' },
+
+  // Phylloscopidae
+  { id:'fluiter', name:'Fluiter', wiki_nl:'Fluiter', wiki_en:'Wood_warbler', rarity:4, group:'leaf_warblers' },
+  { id:'fitis', name:'Fitis', wiki_nl:'Fitis', wiki_en:'Willow_warbler', rarity:1, group:'leaf_warblers' },
+  { id:'tjiftjaf', name:'Tjiftjaf', wiki_nl:'Tjiftjaf', wiki_en:'Common_chiffchaff', rarity:1, group:'leaf_warblers' },
+  { id:'bladkoning', name:'Bladkoning', wiki_nl:'Bladkoning', wiki_en:'Yellow-browed_warbler', rarity:4, group:'leaf_warblers' },
+
+  // Goudhanen
+  { id:'goudhaantje', name:'Goudhaan', wiki_nl:'Goudhaan', wiki_en:'Goldcrest', rarity:2, group:'kinglets' },
+  { id:'vuurgoudhaantje', name:'Vuurgoudhaan', wiki_nl:'Vuurgoudhaan', wiki_en:'Common_firecrest', rarity:3, group:'kinglets' },
+
+  // Boomklever, boomkruiper, baardman
+  { id:'boomklever', name:'Boomklever', wiki_nl:'Boomklever', wiki_en:'Eurasian_nuthatch', rarity:2, group:'nuthatches' },
+  { id:'boomkruiper', name:'Boomkruiper', wiki_nl:'Boomkruiper', wiki_en:'Short-toed_treecreeper', rarity:2, group:'treecreepers' },
+  { id:'taigaboomkruiper', name:'Taigaboomkruiper', wiki_nl:'Taigaboomkruiper', wiki_en:'Eurasian_treecreeper', rarity:5, group:'treecreepers' },
+  { id:'baardman', name:'Baardman', wiki_nl:'Baardman', wiki_en:'Bearded_reedling', rarity:3, group:'bearded_reedlings' },
+
+  // Mezen
+  { id:'glanskop', name:'Glanskop', wiki_nl:'Glanskop', wiki_en:'Marsh_tit', rarity:3, group:'tits' },
+  { id:'matkop', name:'Matkop', wiki_nl:'Matkop', wiki_en:'Willow_tit', rarity:3, group:'tits' },
+  { id:'kuifmees', name:'Kuifmees', wiki_nl:'Kuifmees', wiki_en:'European_crested_tit', rarity:3, group:'tits' },
+  { id:'zwarte_mees', name:'Zwarte mees', wiki_nl:'Zwarte_mees', wiki_en:'Coal_tit', rarity:3, group:'tits' },
+  { id:'pimpelmees', name:'Pimpelmees', wiki_nl:'Pimpelmees', wiki_en:'Eurasian_blue_tit', rarity:1, group:'tits' },
+  { id:'koolmees', name:'Koolmees', wiki_nl:'Koolmees', wiki_en:'Great_tit', rarity:1, group:'tits' },
+  { id:'staartmees', name:'Staartmees', wiki_nl:'Staartmees', wiki_en:'Long-tailed_tit', rarity:1, group:'tits' },
+  { id:'buidelmees', name:'Buidelmees', wiki_nl:'Buidelmees', wiki_en:'Eurasian_penduline_tit', rarity:4, group:'tits' },
+
+  // Wielewaal
+  { id:'wielewaal', name:'Wielewaal', wiki_nl:'Wielewaal_(vogel)', wiki_en:'Eurasian_golden_oriole', rarity:4, group:'orioles' },
+
+  // Klauwieren
+  { id:'grauwe_klauwier', name:'Grauwe klauwier', wiki_nl:'Grauwe_klauwier', wiki_en:'Red-backed_shrike', rarity:4, group:'shrikes' },
+  { id:'klapekster', name:'Klapekster', wiki_nl:'Klapekster', wiki_en:'Great_grey_shrike', rarity:4, group:'shrikes' },
+
+  // Kraaiachtigen
+  { id:'gaai', name:'Gaai', wiki_nl:'Gaai_(vogel)', wiki_en:'Eurasian_jay', rarity:1, group:'crows' },
+  { id:'ekster', name:'Ekster', wiki_nl:'Ekster', wiki_en:'Eurasian_magpie', rarity:1, group:'crows' },
+  { id:'notenkraker', name:'Notenkraker', wiki_nl:'Notenkraker_(vogel)', wiki_en:'Spotted_nutcracker', rarity:5, group:'crows' },
+  { id:'kauw', name:'Kauw', wiki_nl:'Kauw_(vogel)', wiki_en:'Western_jackdaw', rarity:1, group:'crows' },
+  { id:'roek', name:'Roek', wiki_nl:'Roek', wiki_en:'Rook_(bird)', rarity:1, group:'crows' },
+  { id:'zwarte_kraai', name:'Zwarte kraai', wiki_nl:'Zwarte_kraai', wiki_en:'Carrion_crow', rarity:1, group:'crows' },
+  { id:'bonte_kraai', name:'Bonte kraai', wiki_nl:'Bonte_kraai', wiki_en:'Hooded_crow', rarity:4, group:'crows' },
+  { id:'raaf', name:'Raaf', wiki_nl:'Raaf_(vogel)', wiki_en:'Common_raven', rarity:4, group:'crows' },
+
+  // Spreeuw
+  { id:'spreeuw', name:'Spreeuw', wiki_nl:'Spreeuw', wiki_en:'Common_starling', rarity:1, group:'starlings' },
+
+  // Mussen
+  { id:'huismus', name:'Huismus', wiki_nl:'Huismus', wiki_en:'House_sparrow', rarity:1, group:'sparrows' },
+  { id:'ringmus', name:'Ringmus', wiki_nl:'Ringmus', wiki_en:'Eurasian_tree_sparrow', rarity:2, group:'sparrows' },
+
+  // Vinken
+  { id:'vink', name:'Vink', wiki_nl:'Vink_(soort)', wiki_en:'Common_chaffinch', rarity:1, group:'finches' },
+  { id:'keep', name:'Keep', wiki_nl:'Keep_(vogel)', wiki_en:'Brambling', rarity:2, group:'finches' },
+  { id:'groenling', name:'Groenling', wiki_nl:'Groenling_(vogel)', wiki_en:'European_greenfinch', rarity:1, group:'finches' },
+  { id:'putter', name:'Putter', wiki_nl:'Putter_(vogel)', wiki_en:'European_goldfinch', rarity:1, group:'finches' },
+  { id:'sijs', name:'Sijs', wiki_nl:'Sijs_(vogel)', wiki_en:'Eurasian_siskin', rarity:2, group:'finches' },
+  { id:'kneu', name:'Kneu', wiki_nl:'Kneu', wiki_en:'Common_linnet', rarity:2, group:'finches' },
+  { id:'frater', name:'Frater', wiki_nl:'Frater_(vogel)', wiki_en:'Twite', rarity:4, group:'finches' },
+  { id:'barmsijs', name:'Barmsijs', wiki_nl:'Barmsijs', wiki_en:'Common_redpoll', rarity:3, group:'finches' },
+  { id:'kruisbek', name:'Kruisbek', wiki_nl:'Kruisbek', wiki_en:'Red_crossbill', rarity:3, group:'finches' },
+  { id:'goudvink', name:'Goudvink', wiki_nl:'Goudvink', wiki_en:'Eurasian_bullfinch', rarity:3, group:'finches' },
+  { id:'appelvink', name:'Appelvink', wiki_nl:'Appelvink', wiki_en:'Hawfinch', rarity:3, group:'finches' },
+  { id:'europese_kanarie', name:'Europese kanarie', wiki_nl:'Europese_kanarie', wiki_en:'European_serin', rarity:5, group:'finches' },
+
+  // Gorzen
+  { id:'geelgors', name:'Geelgors', wiki_nl:'Geelgors', wiki_en:'Yellowhammer', rarity:3, group:'buntings' },
+  { id:'rietgors', name:'Rietgors', wiki_nl:'Rietgors', wiki_en:'Common_reed_bunting', rarity:2, group:'buntings' },
+  { id:'sneeuwgors', name:'Sneeuwgors', wiki_nl:'Sneeuwgors', wiki_en:'Snow_bunting', rarity:4, group:'buntings' },
+  { id:'grauwe_gors', name:'Grauwe gors', wiki_nl:'Grauwe_gors', wiki_en:'Corn_bunting', rarity:5, group:'buntings' },
+  { id:'ortolaan', name:'Ortolaan', wiki_nl:'Ortolaan', wiki_en:'Ortolan_bunting', rarity:5, group:'buntings' },
+];
+
+// =================================================================
+// STATE
+// =================================================================
+const STATE_KEY = 'vogelquiz_state_v2';
+const STATE_KEY_OLD = 'vogelquiz_state_v1';
+const IMG_CACHE_KEY = 'vogelquiz_imgcache_v2';
+const FAILED_KEY = 'vogelquiz_failed_v2';
+const DEFAULT_STATE = {
+  elo: 1000, streak: 0, correct: 0, total: 0, lastBirdId: null,
+  highscoreBest: 0,
+  challengeBest: {}
+};
+const DIFFICULTY_LABELS = {
+  '0.1': 'Beginner',
+  '0.3': 'Makkelijk',
+  '0.5': 'Gemiddeld',
+  '0.7': 'Moeilijk',
+  '1.0': 'Expert',
+};
+
+let state = loadState();
+const imageCache = loadJSON(IMG_CACHE_KEY, {});
+const failedBirds = new Set(loadJSON(FAILED_KEY, []));
+
+function loadJSON(key, fallback) {
+  try { const v = JSON.parse(localStorage.getItem(key)); return v ?? fallback; } catch(e) { return fallback; }
+}
+function saveJSON(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) {} }
+function loadState() {
+  let saved = loadJSON(STATE_KEY, null);
+  if (!saved) saved = loadJSON(STATE_KEY_OLD, null);
+  if (saved && typeof saved.elo === 'number') return Object.assign({}, DEFAULT_STATE, saved, { challengeBest: saved.challengeBest || {} });
+  return Object.assign({}, DEFAULT_STATE);
+}
+function saveState() { saveJSON(STATE_KEY, state); }
+function saveCache() { saveJSON(IMG_CACHE_KEY, imageCache); }
+function saveFailed() { saveJSON(FAILED_KEY, [...failedBirds]); }
+
+// =================================================================
+// IMAGE FETCH
+// =================================================================
+async function fetchBirdImage(bird) {
+  if (imageCache[bird.id]) return imageCache[bird.id];
+  const tryFetch = async (lang, title) => {
+    const url = `https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`;
+    const r = await fetch(url, { redirect: 'follow' });
+    if (!r.ok) throw new Error('http ' + r.status);
+    const d = await r.json();
+    if (d.type === 'disambiguation') throw new Error('disambig');
+    const src = (d.originalimage && d.originalimage.source) || (d.thumbnail && d.thumbnail.source);
+    if (!src) throw new Error('no image');
+    return { src, page: d.content_urls?.desktop?.page };
+  };
+  let img;
+  try { img = await tryFetch('nl', bird.wiki_nl); }
+  catch(e1) {
+    try { img = await tryFetch('en', bird.wiki_en); }
+    catch(e2) { throw new Error(`Geen foto: ${bird.name}`); }
+  }
+  imageCache[bird.id] = img;
+  saveCache();
+  return img;
+}
+
+// =================================================================
+// QUIZ LOGIC
+// =================================================================
+function difficultyFromElo(elo) { return Math.min(1, Math.max(0, (elo - 700) / 1000)); }
+function preferredRarityFromElo(elo) { const t = difficultyFromElo(elo); return 1 + t * 4; }
+
+function pickTarget(elo) {
+  let pool = BIRDS.filter(b => !failedBirds.has(b.id));
+  if (state.lastBirdId && pool.length > 1) pool = pool.filter(b => b.id !== state.lastBirdId);
+  const preferred = preferredRarityFromElo(elo);
+  const sigma = 1.5;
+  const weights = pool.map(b => {
+    const d = b.rarity - preferred;
+    return Math.exp(-(d*d) / (2 * sigma * sigma));
+  });
+  const total = weights.reduce((a,b) => a+b, 0);
+  let r = Math.random() * total;
+  for (let i = 0; i < pool.length; i++) { r -= weights[i]; if (r <= 0) return pool[i]; }
+  return pool[pool.length - 1];
+}
+
+function pickDistractors(target, difficulty) {
+  const sameGroup = BIRDS.filter(b => b.group === target.group && b.id !== target.id && !failedBirds.has(b.id));
+  const others = BIRDS.filter(b => b.group !== target.group && !failedBirds.has(b.id));
+  const wantSame = Math.min(sameGroup.length, Math.round(difficulty * 3));
+  const wantOther = 3 - wantSame;
+  const sameShuffled = sameGroup.slice().sort(() => Math.random() - 0.5);
+  const othersShuffled = others.slice().sort(() => Math.random() - 0.5);
+  return [
+    ...sameShuffled.slice(0, wantSame),
+    ...othersShuffled.slice(0, wantOther),
+  ];
+}
+
+function updateElo(playerElo, won, difficulty) {
+  const opponentElo = 600 + difficulty * 1100;
+  const expected = 1 / (1 + Math.pow(10, (opponentElo - playerElo) / 400));
+  const K = 28;
+  return Math.round(playerElo + K * ((won ? 1 : 0) - expected));
+}
+
+// =================================================================
+// UI ELEMENTS
+// =================================================================
+const $ = id => document.getElementById(id);
+const elPhoto    = $('bird-photo');
+const elLoader   = $('photo-loader');
+const elCredit   = $('photo-credit');
+const elOptions  = $('options');
+const elFeedback = $('feedback');
+const elNext     = $('next-btn');
+const elElo      = $('elo');
+const elStreak   = $('streak');
+const elCorrect  = $('correct');
+const elDiffFill = $('difficulty-fill');
+const elDbInfo   = $('db-info');
+const elRarTgt   = $('rarity-target');
+
+// =================================================================
+// SCREEN MANAGEMENT
+// =================================================================
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  $(name).classList.add('active');
+}
+
+// =================================================================
+// MODE STATE
+// =================================================================
+let modeState = null;
+let currentRound = null;
+let lastResult = null;
+
+function getCurrentDifficulty() {
+  if (!modeState) return 0.5;
+  if (modeState.mode === 'endless') return difficultyFromElo(state.elo);
+  if (modeState.mode === 'highscore') return Math.min(1, modeState.score / 25);
+  if (modeState.mode === 'challenge') return modeState.difficulty;
+  return 0.5;
+}
+function getEffectiveElo() {
+  if (modeState && modeState.mode === 'endless') return state.elo;
+  return 700 + getCurrentDifficulty() * 1000;
+}
+
+// =================================================================
+// MENU
+// =================================================================
+function renderMenu() {
+  $('menu-endless-stat').textContent = `ELO: ${state.elo}`;
+  $('menu-highscore-stat').textContent = `Beste: ${state.highscoreBest || 0}`;
+  document.querySelectorAll('[data-diff-key]').forEach(el => {
+    const k = el.dataset.diffKey;
+    const best = (state.challengeBest && state.challengeBest[k]) || 0;
+    el.textContent = best > 0 ? `${best}/20` : '—';
+  });
+}
+
+function startMode(mode, opts = {}) {
+  if (mode === 'endless') {
+    modeState = { mode };
+  } else if (mode === 'highscore') {
+    modeState = { mode, score: 0 };
+  } else if (mode === 'challenge') {
+    const diff = opts.difficulty;
+    const diffKey = opts.difficultyKey || String(diff);
+    modeState = { mode, questionNum: 0, correct: 0, difficulty: diff, difficultyKey: diffKey, total: 20 };
+  }
+  lastResult = null;
+  configureGameHeader();
+  showScreen('game-screen');
+  newRound();
+}
+
+function backToMenu(force = false) {
+  if (!force && modeState && (modeState.mode === 'highscore' || modeState.mode === 'challenge')) {
+    const hasProgress = (modeState.mode === 'highscore' && modeState.score > 0)
+                     || (modeState.mode === 'challenge' && modeState.questionNum > 0 && modeState.questionNum < modeState.total);
+    if (hasProgress && !confirm('Weet je zeker dat je terug wilt naar het menu? Je huidige run gaat verloren.')) {
+      return;
+    }
+  }
+  modeState = null;
+  currentRound = null;
+  lastResult = null;
+  renderMenu();
+  showScreen('menu-screen');
+}
+
+// =================================================================
+// GAME HEADER (mode-aware)
+// =================================================================
+function configureGameHeader() {
+  if (!modeState) return;
+  const streakEl = $('stat-streak');
+  const correctEl = $('stat-correct');
+  const eloBadge = $('elo-badge');
+  const streakLabel = streakEl.querySelector('.stat-label');
+  const correctLabel = correctEl.querySelector('.stat-label');
+
+  if (modeState.mode === 'endless') {
+    eloBadge.style.display = '';
+    streakEl.style.display = '';
+    correctEl.style.display = '';
+    streakLabel.textContent = 'Streak';
+    correctLabel.textContent = 'Score';
+  } else if (modeState.mode === 'highscore') {
+    eloBadge.style.display = 'none';
+    streakEl.style.display = '';
+    correctEl.style.display = '';
+    streakLabel.textContent = 'Score';
+    correctLabel.textContent = 'Beste';
+  } else if (modeState.mode === 'challenge') {
+    eloBadge.style.display = 'none';
+    streakEl.style.display = '';
+    correctEl.style.display = '';
+    streakLabel.textContent = 'Vraag';
+    correctLabel.textContent = 'Goed';
+  }
+}
+
+function refreshGameHeader() {
+  if (!modeState) return;
+  const eligible = BIRDS.length - failedBirds.size;
+  elDbInfo.textContent = `${eligible} vogels`;
+  const d = getCurrentDifficulty();
+  elDiffFill.style.width = (d * 100).toFixed(0) + '%';
+  const pref = preferredRarityFromElo(getEffectiveElo());
+  const tier = Math.round(pref);
+
+  if (modeState.mode === 'endless') {
+    elRarTgt.textContent = `moeilijkheid ${(d*100).toFixed(0)}% · ${RARITY_LABEL[tier]}`;
+    elElo.textContent = state.elo;
+    elStreak.textContent = state.streak;
+    elCorrect.textContent = `${state.correct}/${state.total}`;
+  } else if (modeState.mode === 'highscore') {
+    elRarTgt.textContent = `moeilijkheid ${(d*100).toFixed(0)}% · ${RARITY_LABEL[tier]}`;
+    elStreak.textContent = modeState.score;
+    elCorrect.textContent = state.highscoreBest || 0;
+  } else if (modeState.mode === 'challenge') {
+    const lbl = DIFFICULTY_LABELS[modeState.difficultyKey] || '';
+    elRarTgt.textContent = `${lbl} · ${RARITY_LABEL[tier]}`;
+    elStreak.textContent = `${Math.min(modeState.questionNum + 1, modeState.total)}/${modeState.total}`;
+    elCorrect.textContent = `${modeState.correct}`;
+  }
+}
+
+// =================================================================
+// GAME LOOP
+// =================================================================
+async function newRound() {
+  if (!modeState) return;
+  refreshGameHeader();
+  elFeedback.textContent = '';
+  elNext.style.display = 'none';
+  elOptions.innerHTML = '';
+  elPhoto.style.display = 'none';
+  elLoader.style.display = 'flex';
+  elLoader.textContent = 'Foto laden…';
+  elCredit.style.display = 'none';
+
+  let target, img;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    target = pickTarget(getEffectiveElo());
+    if (!target) { elLoader.innerHTML = '⚠️ Geen vogels meer beschikbaar.'; return; }
+    try { img = await fetchBirdImage(target); break; }
+    catch(err) {
+      console.warn('Skip', target.name, err.message);
+      failedBirds.add(target.id);
+      saveFailed();
+      img = null;
+    }
+  }
+  if (!img) { elLoader.textContent = '⚠️ Kan geen vogel met foto vinden.'; return; }
+
+  state.lastBirdId = target.id;
+  const difficulty = getCurrentDifficulty();
+  const distractors = pickDistractors(target, difficulty);
+  const optionsArr = [target, ...distractors].sort(() => Math.random() - 0.5);
+  currentRound = { bird: target, options: optionsArr, difficulty, answered: false };
+
+  renderOptions();
+
+  elPhoto.src = img.src;
+  elPhoto.alt = '';
+  elPhoto.onload = () => { elLoader.style.display = 'none'; elPhoto.style.display = 'block'; };
+  elPhoto.onerror = () => {
+    elLoader.textContent = 'Kon foto niet laden, volgende vogel…';
+    failedBirds.add(target.id);
+    saveFailed();
+    setTimeout(newRound, 600);
+  };
+  if (img.page) { elCredit.href = img.page; elCredit.textContent = 'Wikipedia'; }
+  // Credit blijft verborgen tot na het antwoord (anders kun je doorklikken naar het juiste vogelartikel)
+}
+
+function renderOptions() {
+  elOptions.innerHTML = '';
+  currentRound.options.forEach((bird, idx) => {
+    const btn = document.createElement('button');
+    btn.className = 'option';
+    btn.textContent = `${idx+1}. ${bird.name}`;
+    btn.dataset.id = bird.id;
+    btn.onclick = () => answer(bird.id);
+    elOptions.appendChild(btn);
+  });
+}
+
+function answer(chosenId) {
+  if (!currentRound || currentRound.answered) return;
+  currentRound.answered = true;
+
+  const correct = chosenId === currentRound.bird.id;
+  const targetBird = currentRound.bird;
+
+  Array.from(elOptions.children).forEach(btn => {
+    btn.disabled = true;
+    if (btn.dataset.id === targetBird.id) btn.classList.add('correct');
+    else if (btn.dataset.id === chosenId) btn.classList.add('wrong');
+    else btn.classList.add('dim');
+  });
+
+  // Toon nu pas de Wikipedia-link (zou anders de antwoord verklappen)
+  if (elCredit.href) elCredit.style.display = 'block';
+
+  const rarityTxt = RARITY_LABEL[targetBird.rarity];
+
+  if (modeState.mode === 'endless') {
+    const oldElo = state.elo;
+    const newElo = updateElo(oldElo, correct, currentRound.difficulty);
+    const delta = newElo - oldElo;
+    state.elo = newElo;
+    state.total += 1;
+    if (correct) { state.correct += 1; state.streak += 1; } else { state.streak = 0; }
+    saveState();
+    const sign = delta >= 0 ? '+' : '';
+    const cls = delta >= 0 ? 'delta-pos' : 'delta-neg';
+    elFeedback.innerHTML = (correct
+      ? `Goed! Het was de <strong>${targetBird.name}</strong>. <span class="${cls}">${sign}${delta} ELO</span>`
+      : `Het was de <strong>${targetBird.name}</strong>. <span class="${cls}">${sign}${delta} ELO</span>`)
+      + `<span class="rarity">${rarityTxt}</span>`;
+    refreshGameHeader();
+    elNext.textContent = 'Volgende vogel →';
+    elNext.style.display = 'block';
+    elNext.focus();
+  } else if (modeState.mode === 'highscore') {
+    if (correct) {
+      modeState.score += 1;
+      const newDifficulty = Math.min(1, modeState.score / 25);
+      elFeedback.innerHTML = `Goed! Het was de <strong>${targetBird.name}</strong>. <span class="delta-pos">${modeState.score} achter elkaar</span>`
+        + `<span class="rarity">${rarityTxt} · moeilijkheid ${(newDifficulty*100).toFixed(0)}%</span>`;
+      refreshGameHeader();
+      elNext.textContent = 'Volgende vogel →';
+      elNext.style.display = 'block';
+      elNext.focus();
+    } else {
+      const prevBest = state.highscoreBest || 0;
+      const isNewBest = modeState.score > prevBest;
+      if (isNewBest) { state.highscoreBest = modeState.score; saveState(); }
+      elFeedback.innerHTML = `Helaas! Het was de <strong>${targetBird.name}</strong>.<span class="rarity">${rarityTxt}</span>`;
+      lastResult = { mode: 'highscore', score: modeState.score, prevBest, isNewBest };
+      elNext.textContent = 'Bekijk resultaat →';
+      elNext.style.display = 'block';
+      elNext.focus();
+    }
+  } else if (modeState.mode === 'challenge') {
+    modeState.questionNum += 1;
+    if (correct) modeState.correct += 1;
+    refreshGameHeader();
+    const isLast = modeState.questionNum >= modeState.total;
+    elFeedback.innerHTML = (correct
+      ? `Goed! Het was de <strong>${targetBird.name}</strong>.`
+      : `Het was de <strong>${targetBird.name}</strong>.`)
+      + `<span class="rarity">${rarityTxt}</span>`;
+    if (isLast) {
+      const dKey = modeState.difficultyKey;
+      const prevBest = (state.challengeBest && state.challengeBest[dKey]) || 0;
+      const isNewBest = modeState.correct > prevBest;
+      if (isNewBest) {
+        state.challengeBest = state.challengeBest || {};
+        state.challengeBest[dKey] = modeState.correct;
+        saveState();
+      }
+      lastResult = {
+        mode: 'challenge', score: modeState.correct, total: modeState.total,
+        difficulty: modeState.difficulty, difficultyKey: dKey, prevBest, isNewBest,
+      };
+      elNext.textContent = 'Bekijk resultaat →';
+    } else {
+      elNext.textContent = 'Volgende vraag →';
+    }
+    elNext.style.display = 'block';
+    elNext.focus();
+  }
+}
+
+// =================================================================
+// NEXT
+// =================================================================
+elNext.onclick = () => {
+  if (lastResult && currentRound && currentRound.answered) {
+    showResult(lastResult);
+    return;
+  }
+  newRound();
+};
+
+// =================================================================
+// RESULT
+// =================================================================
+function showResult(result) {
+  const elIcon = $('result-icon');
+  const elTitle = $('result-title');
+  const elScore = $('result-score');
+  const elDetail = $('result-score-detail');
+  const elBest = $('result-best');
+  const elPlayAgain = $('play-again-btn');
+
+  if (result.mode === 'highscore') {
+    elIcon.textContent = result.isNewBest ? '🏆' : (result.score >= 10 ? '🎯' : '😅');
+    elTitle.textContent = result.isNewBest ? 'Nieuw record!' : 'Game over';
+    elScore.textContent = result.score;
+    elDetail.textContent = result.score === 1 ? 'goed' : 'goed achter elkaar';
+    if (result.isNewBest && result.prevBest > 0) {
+      elBest.textContent = `Vorige beste: ${result.prevBest}`;
+      elBest.classList.add('new-record');
+    } else if (result.isNewBest) {
+      elBest.textContent = 'Eerste record!';
+      elBest.classList.add('new-record');
+    } else {
+      elBest.textContent = `Beste: ${result.prevBest}`;
+      elBest.classList.remove('new-record');
+    }
+    elPlayAgain.textContent = 'Speel opnieuw';
+  } else if (result.mode === 'challenge') {
+    const pct = Math.round((result.score / result.total) * 100);
+    elIcon.textContent = result.isNewBest ? '🏆' : (pct >= 80 ? '🎉' : pct >= 50 ? '👍' : '😅');
+    elTitle.textContent = result.isNewBest ? 'Nieuw record!' : 'Challenge afgerond';
+    elScore.textContent = `${result.score}/${result.total}`;
+    elDetail.textContent = `${pct}% goed · ${DIFFICULTY_LABELS[result.difficultyKey] || ''}`;
+    if (result.isNewBest && result.prevBest > 0) {
+      elBest.textContent = `Vorige beste: ${result.prevBest}/${result.total}`;
+      elBest.classList.add('new-record');
+    } else if (result.isNewBest) {
+      elBest.textContent = 'Eerste record op deze moeilijkheid!';
+      elBest.classList.add('new-record');
+    } else {
+      elBest.textContent = `Beste: ${result.prevBest}/${result.total}`;
+      elBest.classList.remove('new-record');
+    }
+    elPlayAgain.textContent = 'Speel opnieuw';
+  }
+  showScreen('result-screen');
+}
+
+$('play-again-btn').onclick = () => {
+  if (!lastResult) return;
+  const r = lastResult;
+  lastResult = null;
+  if (r.mode === 'challenge') startMode('challenge', { difficulty: r.difficulty, difficultyKey: r.difficultyKey });
+  else startMode(r.mode);
+};
+$('back-to-menu-btn').onclick = () => backToMenu(true);
+
+// =================================================================
+// EVENT HANDLERS
+// =================================================================
+$('game-back-btn').onclick = () => backToMenu(false);
+
+document.querySelectorAll('#menu-screen [data-mode]').forEach(btn => {
+  btn.onclick = () => startMode(btn.dataset.mode);
+});
+document.querySelectorAll('#challenge-buttons button').forEach(btn => {
+  btn.onclick = () => startMode('challenge', {
+    difficulty: parseFloat(btn.dataset.diff),
+    difficultyKey: btn.dataset.diff,
+  });
+});
+
+document.addEventListener('keydown', (e) => {
+  if ($('result-screen').classList.contains('active')) {
+    if (e.key === 'Enter') { e.preventDefault(); $('play-again-btn').click(); }
+    if (e.key === 'Escape') { e.preventDefault(); $('back-to-menu-btn').click(); }
+    return;
+  }
+  if (!$('game-screen').classList.contains('active')) return;
+  if (e.key === 'Escape') { e.preventDefault(); backToMenu(false); return; }
+  if (!currentRound) return;
+  if (currentRound.answered) {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); elNext.click(); }
+    return;
+  }
+  const idx = parseInt(e.key, 10);
+  if (idx >= 1 && idx <= 4) {
+    const btn = elOptions.children[idx-1];
+    if (btn) btn.click();
+  }
+});
+
+$('reset-btn').onclick = () => {
+  if (!confirm('Weet je zeker dat je ALLES wilt resetten? ELO, highscores, challenge-records, foto-cache en blacklist worden gewist.')) return;
+  state = Object.assign({}, DEFAULT_STATE);
+  failedBirds.clear();
+  for (const k in imageCache) delete imageCache[k];
+  saveState(); saveFailed(); saveCache();
+  renderMenu();
+};
+
+// =================================================================
+// START
+// =================================================================
+renderMenu();
+showScreen('menu-screen');
+</script>
+</body>
+</html>
