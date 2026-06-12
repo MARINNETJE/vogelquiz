@@ -96,6 +96,12 @@
     border-color: #6b513a;
   }
   .difficulty-buttons button.brown-btn:hover { background: #4a3a2a; border-color: #8a6a4a; }
+  .difficulty-buttons button.raptors-btn {
+    grid-column: 1 / -1;
+    background: #2a2d3d;
+    border-color: #4a516b;
+  }
+  .difficulty-buttons button.raptors-btn:hover { background: #353a52; border-color: #6a7595; }
 
   /* === GAME === */
   .header {
@@ -175,6 +181,19 @@
   .feedback .delta-pos { color: var(--accent); font-weight: 600; }
   .feedback .delta-neg { color: var(--wrong); font-weight: 600; }
   .feedback .rarity { font-size: 11px; opacity: 0.7; display: block; margin-top: 4px; }
+  .feedback .tip {
+    display: block;
+    margin: 8px auto 0;
+    max-width: 580px;
+    padding: 8px 12px;
+    background: rgba(74,144,107,0.10);
+    border-left: 3px solid var(--accent);
+    border-radius: 6px;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--text);
+    text-align: left;
+  }
   .next-btn {
     display: block; width: 100%; margin-top: 12px; padding: 12px;
     background: var(--accent); color: #0f1a14; border: none;
@@ -292,6 +311,7 @@
             <button data-diff="0.7">Moeilijk <span class="best" data-diff-key="0.7">—</span></button>
             <button data-diff="1.0">Expert <span class="best" data-diff-key="1.0">—</span></button>
             <button data-diff="brown" class="brown-btn">🦜 Bruine vogels <span class="best" data-diff-key="brown">—</span></button>
+            <button data-diff="raptors" class="raptors-btn">🦅 Roofvogels <span class="best" data-diff-key="raptors">—</span></button>
           </div>
         </div>
       </div>
@@ -720,7 +740,20 @@ const DIFFICULTY_LABELS = {
   '0.7': 'Moeilijk',
   '1.0': 'Expert',
   'brown': 'Bruine vogels',
+  'raptors': 'Roofvogels',
 };
+
+// Roofvogels & uilen — herkenbaar aan silhouet, prooizoekgedrag en kleed
+const RAPTOR_BIRDS = [
+  // Daggroofvogels
+  'visarend', 'wespendief', 'zwarte_wouw', 'rode_wouw', 'zeearend',
+  'bruine_kiekendief', 'blauwe_kiekendief', 'grauwe_kiekendief',
+  'havik', 'sperwer', 'buizerd', 'ruigpootbuizerd',
+  // Valken
+  'torenvalk', 'smelleken', 'boomvalk', 'slechtvalk', 'roodpootvalk',
+  // Uilen (ook nachtelijke "roofvogels")
+  'kerkuil', 'oehoe', 'steenuil', 'bosuil', 'ransuil', 'velduil',
+];
 
 // Kleine bruine "LBJ's" (Little Brown Jobs) die enorm op elkaar lijken
 const BROWN_BIRDS = [
@@ -735,6 +768,120 @@ const BROWN_BIRDS = [
 ];
 
 const RECENT_BIRDS_LIMIT = 35;
+
+// =================================================================
+// HERKENNINGSTIPS — getoond na een antwoord, met nadruk op lookalikes
+// =================================================================
+const BIRD_TIPS = {
+  // ===== ROOFVOGELS =====
+  visarend: 'Witte onderkant met zwarte band over de borst, donker bandje door het oog. Hangt biddend boven water en duikt met poten vooruit.',
+  wespendief: 'Lijkt op buizerd maar slankere kop (uitstekend als bij een koekoek) en langere staart met drie zwarte banden. Trekt in augustus-september.',
+  zwarte_wouw: 'Donker, bijna eenkleurig bruin. Staart is licht gevorkt (ondieper dan rode wouw) — bij draaien lijkt het soms recht.',
+  rode_wouw: 'Diep gevorkte roodbruine staart, witte vlek aan de onderkant van de vleugel. Onmiskenbaar wanneer de staart te zien is.',
+  zeearend: 'Enorm formaat — "vliegende deur" silhouet met brede rechthoekige vleugels. Adult heeft witte staart en gele snavel.',
+  bruine_kiekendief: 'Vliegt laag met opgeheven V-vleugels boven riet. Vrouwtje chocoladebruin met crèmekleurige kop; mannetje grijs/bruin met zwarte vleugelpunten.',
+  blauwe_kiekendief: 'Mannetje blauwgrijs met zwarte vleugeltips; vrouwtje "ringtail" met witte stuit. Slanker dan bruine kiekendief, glijdt laag boven open veld.',
+  grauwe_kiekendief: 'Mannetje slanker en grijzer dan blauwe kiekendief, met extra zwarte band op vleugel. Zeer zeldzaam — vooral in akkers.',
+  havik: 'Groot en stevig, brede borst, korte ronde vleugels, lange staart. Witte wenkbrauwstreep. Vrouwtje fors groter dan mannetje.',
+  sperwer: 'Kleiner en slanker dan havik, kortere staart, snelle wendbare vlucht tussen bomen. Mannetje oranje gestreepte borst.',
+  buizerd: 'Algemeenste roofvogel — breed silhouet, cirkelt met ondiepe V-vleugels boven snelweg/bos. Kleed zeer variabel van bijna wit tot donkerbruin.',
+  ruigpootbuizerd: 'Lijkt op buizerd maar witte staart met zwarte eindband en bevederde poten. "Bidt" vaak boven open velden — iets wat buizerd zelden doet.',
+  torenvalk: 'Klein, "bidt" stilstaand in de lucht boven bermen. Mannetje grijze kop en staart, vrouwtje bruin gestreept.',
+  smelleken: 'Kleinste roofvogel van NL, gedrongen silhouet, jaagt laag met snelle vleugelslag. Mannetje blauwgrijze rug.',
+  boomvalk: 'Slank, lange spitse "sikkelvleugels" als een grote gierzwaluw. Witte wang met zwarte snor en rode broek bij adult.',
+  slechtvalk: 'Krachtig gebouwd, brede borst, korte staart, zwarte "helm" met dikke snor. Spectaculaire stootduik op duiven.',
+  roodpootvalk: 'Mannetje leigrijs met opvallend rode poten en broek; vrouwtje oranje kop en onderkant. Zeldzame doortrekker in open landschap.',
+  kerkuil: 'Hartvormige witte gezichtssluier, gouden bovendelen, sneeuwwitte onderzijde. Vliegt geruisloos langs slootkanten.',
+  oehoe: 'Grootste uil van Europa — opvallende oorpluimen en feloranje ogen. Tegenwoordig in oude steengroeven en industrie.',
+  steenuil: 'Klein, gedrongen, vaak overdag op paaltjes of daken zichtbaar. Witte wenkbrauwstreep en gele ogen. Bobt op-en-neer.',
+  bosuil: 'Stevig, ronde kop zonder oorpluimen. Donkere ogen (uniek onder onze uilen) en bruin gestreept kleed. Beroemde "hoehoe" roep.',
+  ransuil: 'Lange rechtopstaande oorpluimen, oranje ogen, slanker dan bosuil. Roostert \'s winters vaak in groepen in groenblijvende bomen.',
+  velduil: 'Korte oorpluimen, gele ogen, vliegt overdag boven open vlaktes. Lichter en geler dan ransuil.',
+
+  // ===== BRUINE VOGELS (LBJ\'s) =====
+  tjiftjaf: 'Donkere poten (vs. fitis: lichte) en bescheidener wenkbrauwstreep. Beweegt voortdurend met kort wippen van de staart. Naam = zang: "tjif-tjaf".',
+  fitis: 'Lijkt sterk op tjiftjaf maar lichtere vleeskleurige poten, duidelijker gele wenkbrauwstreep en langere vleugels. Zang: vloeiend dalend strofje.',
+  fluiter: 'Geel-witte buik strak gescheiden van olijfgroene bovendelen. Lange vleugels. Trillende "sip-sip-sirrr"-zang in oud beukenbos.',
+  bladkoning: 'Zeldzame piepklein dwaalgastje met twee opvallend gele vleugelstrepen en lange gele wenkbrauwstreep. Hangt vaak ondersteboven.',
+  sprinkhaanzanger: 'Onopvallend bruin gestreept. Zingt langgerekt snorrend als een krekel vanuit lage dekking.',
+  snor: 'Lijkt op rietzanger maar effen warmbruine rug (ongestreept). Snorrende zang als sprinkhaanzanger maar lager en korter.',
+  rietzanger: 'Duidelijke crèmekleurige wenkbrauwstreep boven oog (vs. kleine karekiet: geen). Gestreepte rug. Klimt zichtbaar in riet.',
+  bosrietzanger: 'Bijna identiek aan kleine karekiet maar in nat struweel i.p.v. zuiver riet. Imiteert tientallen andere soorten in zijn lange zang.',
+  kleine_karekiet: 'Effen warmbruine rug, hangt in rietstengels. Krasende ritmische zang "karre-karre-kiet-kiet". Geen wenkbrauwstreep (vs. rietzanger).',
+  grote_karekiet: 'Veel groter (musgrootte) dan kleine karekiet, krachtige luide zang. Vooral in stevige oude rietkragen.',
+  spotvogel: 'Warmer geel-groen dan andere zangers, blauwgrijze poten, vlak voorhoofd. Imiteert andere vogels in zijn pittige zang.',
+  braamsluiper: 'Lijkt op grasmus maar grijzer met donkere oorvlek; geen warmbruine vleugels. "Klepperende" eentonige zang.',
+  grasmus: 'Witte keel valt op tegen grijs/bruin kopje, roodbruine vleugels. Zingt vaak in kort verend zangvluchtje.',
+  tuinfluiter: 'Heel onopvallend grijsbruin zonder kenmerken — herken vooral aan zang: lange melodieuze trillers, lijkend op zwartkop maar minder fluitend.',
+  graspieper: 'Bruin gestreept, roze-vleeskleurige poten, lange achternagel. Zingt in zangvlucht omhoog en parachuteert weer omlaag.',
+  boompieper: 'Warmer bruin dan graspieper, fijnere borststreping, kortere achternagel. Zingt vanaf takpunt en zweeft parachuterend omlaag.',
+  oeverpieper: 'Donkerder en grijzer dan graspieper, met donkere poten. Vrijwel altijd aan de kust of op rotsen.',
+  waterpieper: '\'s Winters grijsbruin met witte buik en donkere poten. In zoetwatergebieden — niet op het strand (vs. oeverpieper).',
+  veldleeuwerik: 'Klein kuifje, gestreepte borst, witte buitenste staartpennen. Beroemde zwevende zang hoog in de lucht boven akkers.',
+  boomleeuwerik: 'Veel kortere staart dan veldleeuwerik. Witte wenkbrauwstrepen komen in nek samen (uniek!). Zang: melodieus "tloeit-tloeit".',
+  winterkoning: 'Heel klein bruin bolletje met steil opgeheven staart. Verrassend luide ratelende zang voor zijn formaat.',
+  heggenmus: 'Lijkt op vrouwtje mus, maar dunne snavel en grijze kop & borst. Solitair en bescheiden in onderbegroeiing.',
+  graszanger: 'Heel klein gestreept vogeltje met gele snavelbasis. Zingt "tsip-tsip-tsip" in golvende zangvlucht boven natte gebieden.',
+  ringmus: 'Lijkt op huismus maar bruinrode kop en zwarte vlek op witte wang. Beide geslachten gelijk (huismus: man/vrouw verschillen).',
+
+  // ===== VEELVOORKOMENDE TUINVOGELS =====
+  koolmees: 'Grootste mees met zwarte kop, witte wangen, gele buik met zwarte streep ("stropdas") — bij mannetje breder dan bij vrouwtje.',
+  pimpelmees: 'Kleiner en compacter dan koolmees: blauwe kruin en vleugels, gele buik zonder duidelijke streep.',
+  zwarte_mees: 'Lijkt op koolmees maar kleiner, geen geel, witte vlek in zwarte nek.',
+  matkop: 'Lijkt op glanskop maar mattere zwarte kruin, lichte vleugelvlek, en raspende roep "tsje-tsjeer".',
+  glanskop: 'Glanzend zwarte kruin (vs. matkop: dof). Heldere nasale "pitchoe" roep.',
+  staartmees: 'Onmiskenbaar piepklein roze-zwart-wit balletje met lange staart. Beweegt in luidruchtige groepjes door struiken.',
+  roodborst: 'Oranje borst en gezicht omringd door grijsblauwe rand. Beide geslachten gelijk. Vaak op de grond hippend in bos en tuin.',
+  merel: 'Mannetje pikzwart met gele snavel en oogring. Vrouwtje warm donkerbruin met vage borststreping.',
+  zanglijster: 'Bruin met duidelijk druppelvormig gevlekte borst (vlekken min of meer in rijen). Klein formaat. Slaat slakken stuk op "smidsstenen".',
+  grote_lijster: 'Grootste lijster, grijzer dan zanglijster, met rondere borstvlekken (geen druppels). Witte oksels in vlucht.',
+  koperwiek: 'Roodbruine flanken/oksel ("koper-wiek") en opvallende crèmekleurige wenkbrauwstreep. Wintergast in groepen.',
+  kramsvogel: 'Grijze kop en stuit, kastanjebruine rug, zwart gestreepte borst. Wintergast in roepende groepen op kale velden.',
+  spreeuw: '\'s Zomers glanzend zwart met paars/groen, \'s winters bezaaid met witte stippen. Loopt (huppelt niet) en kakelt continu.',
+  vink: 'Mannetje blauwgrijze kop, roestrode borst, opvallende witte vleugelstrepen. Vrouwtje doffer maar dezelfde vleugelstrepen.',
+  keep: 'Wintergast, lijkt op vink maar oranje borst en witte stuit. In roepende groepen op beukenoten.',
+  groenling: 'Olijfgroen met heldergele vleugelpanelen en gele staartbasis. Zware vinkachtige snavel.',
+  putter: 'Onmiskenbaar — rood gezicht, witte wangen, gele vleugelstrepen. Hangt vaak aan distelpluizen.',
+  sijs: 'Klein groen-geel met zwarte kin en kruin (mannetje), gestreepte flanken. Vaak in elzen.',
+  kneu: 'Mannetje rode borst en voorhoofd (in zomer), bruine rug. Vrouwtje bruin gestreept zonder rood.',
+  huismus: 'Mannetje grijze kruin, zwarte bef, kastanjebruine nek. Vrouwtje doffer bruin met crème wenkbrauwstreep.',
+  pestvogel: 'Ronde verschijning met opvallende kuif, gele staartpunt en wasrode toppen op vleugel. Wintergast in lijsterbessen.',
+  boomklever: 'Blauwgrijze rug, oranje buik, zwarte oogstreep. Enige zangvogel die kop-omlaag boomstam afloopt.',
+  boomkruiper: 'Klein, gestreept bruin, lange dunne kromme snavel. Loopt spiraal omhoog langs boomstam (nooit omlaag — vs. boomklever).',
+  zwartkop: 'Mannetje grijs met pikzwart "petje", vrouwtje met roodbruin petje. Krachtige melodieuze fluitende zang.',
+
+  // ===== EENDEN, GANZEN, KARAKTERVOGELS =====
+  wilde_eend: 'Mannetje glanzend groene kop, gele snavel, witte halsband, krullende staartveren. Vrouwtje gevlekt bruin met blauwe spiegel.',
+  smient: 'Mannetje kastanjebruine kop met crèmekleurige bles, grijze flanken. Vaak in grote groepen op natte weilanden.',
+  krakeend: 'Mannetje grijs met zwarte achterhand, witte vleugelspiegel. Onopvallender dan wilde eend.',
+  pijlstaart: 'Mannetje slank met lange spitse staart, witte hals tegen bruine kop. Vrouwtje slanker dan wilde eend.',
+  slobeend: 'Onmiskenbaar spatelvormige brede snavel. Mannetje wit met groene kop en kastanje flanken.',
+  kuifeend: 'Mannetje zwart-wit met opvallende kuif aan achterkant kop, gele ogen. Vrouwtje donkerbruin met kortere kuif.',
+  tafeleend: 'Mannetje kastanjerode kop, grijze rug, zwart vóór en achter. Vrouwtje bruin.',
+  grauwe_gans: 'Algemeenste grijze gans. Bleek roze snavel en poten. "Stamvader" van de tamme gans.',
+  kolgans: 'Witte vlek vóór bij snavel ("kolletje") en zwarte buikstrepen bij adult. Roze snavel.',
+  brandgans: 'Wit gezicht en zwarte hals, grijze rug met zwart-witte banen. Onmiskenbaar.',
+  rotgans: 'Klein en donker, zwarte kop en hals met kleine witte halsvlek. Aan de kust.',
+  fuut: 'Slanke watervogel met opvallende oranje kraag en zwarte kuif in broedkleed. Spectaculair baltsritueel.',
+  aalscholver: 'Groot en zwart met witte wangvlek, vaak met gespreide vleugels te drogen op paal of boom.',
+  blauwe_reiger: 'Grote grijze reiger met witte kop en zwarte oogstreep, donkere kuif. Stilstaand in ondiep water.',
+  grote_zilverreiger: 'Sneeuwwit, slanker dan blauwe reiger, gele snavel in winterkleed (zwart in zomer).',
+  kleine_zilverreiger: 'Kleiner dan grote zilverreiger, zwarte snavel en zwarte poten met opvallend gele tenen.',
+  ijsvogel: 'Onmiskenbaar — felblauwe rug, oranje buik. Klein pijlachtig silhouet boven helder stromend water.',
+
+  // ===== EXTRA HERKENBARE SOORTEN =====
+  ekster: 'Onmiskenbaar zwart-wit met lange staart en metalig blauw-groene glans.',
+  gaai: 'Roze-bruin met opvallende blauw-zwarte vleugelvlek en witte stuit. Schor "krètsj"-roep.',
+  zwarte_kraai: 'Volledig zwart met dikke snavel. Vs. roek: roek heeft kale grijze snavelbasis (volwassen) en spitsere snavel.',
+  bonte_kraai: 'Lichaam grijs met zwarte kop, vleugels en staart. Wintergast langs de kust, vooral in het noordoosten.',
+  raaf: 'Veel groter dan kraai, wigvormige staart, zware snavel. Diepe doorrollende "kronk".',
+  kauw: 'Kleine kraai met grijze nek en lichtblauwe ogen. Sociaal en luidruchtig.',
+  koekoek: 'Lijkt op sperwer met gestreepte buik maar puntige vleugels en spitse staart. Beroemde "koe-koek" roep.',
+  gierzwaluw: 'Sikkelvormige vleugels, geheel donker, gilt schreeuwend in groepen rond gebouwen. Niet verwarren met zwaluwen (kortere wendbaardere vleugels).',
+  boerenzwaluw: 'Lange diep gevorkte staart, blauwzwarte rug, roomwitte buik met roodbruine keel.',
+  huiszwaluw: 'Witte stuit valt op tegen blauwzwarte rug. Korte gevorkte staart. Maakt modder-nest tegen muur/dak.',
+  oeverzwaluw: 'Kleinste zwaluw, bruin met witte buik en bruine borstband. Broedt in zandwanden.',
+};
 
 let state = loadState();
 const imageCache = loadJSON(IMG_CACHE_KEY, {});
@@ -1087,11 +1234,14 @@ function startMode(mode, opts = {}) {
     modeState = { mode, score: 0, seenBirds: new Set() };
   } else if (mode === 'challenge') {
     const diffKey = opts.difficultyKey || String(opts.difficulty);
-    // "Bruine vogels" — vaste hoge moeilijkheid op een specifieke pool
+    // Vaste moeilijkheid + specifieke pool voor de themamodi
     let diff, birdPool = null;
     if (diffKey === 'brown') {
       diff = 0.9;
       birdPool = BROWN_BIRDS.slice();
+    } else if (diffKey === 'raptors') {
+      diff = 0.85;
+      birdPool = RAPTOR_BIRDS.slice();
     } else {
       diff = opts.difficulty;
     }
@@ -1353,6 +1503,16 @@ function answer(chosenId) {
     }
     elNext.style.display = 'block';
     elNext.focus();
+  }
+
+  // Herkenningstip — verschijnt na ELK antwoord (goed of fout) zodat je leert.
+  // Bevat vaak een vergelijking met soorten die er erg op lijken.
+  const tip = BIRD_TIPS[targetBird.id];
+  if (tip) {
+    const tipSpan = document.createElement('span');
+    tipSpan.className = 'tip';
+    tipSpan.innerHTML = `<strong>💡 Herkenning:</strong> ${tip}`;
+    elFeedback.appendChild(tipSpan);
   }
 }
 
